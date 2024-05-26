@@ -13,7 +13,6 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE ("Dumbbell");
 
-
 //Funciones para tamaño de ventana
 void TraceCwnd (uint32_t node, uint32_t cwndWindow,
             Callback <void, uint32_t, uint32_t> CwndTrace)
@@ -30,14 +29,15 @@ static void CwndChange (Ptr<OutputStreamWrapper> stream, uint32_t oldCwnd, uint3
 
 int main (int argc, char *argv[])
 {
-  //configuraciones general
+  //TcpNewReno y OnOffApp
+  Config::SetDefault("ns3::TcpL4Protocol::SocketType", StringValue("ns3::TcpNewReno"));
   Config::SetDefault ("ns3::OnOffApplication::PacketSize", UintegerValue(50));
 
   //Numero de nodos de hoja del lado izquierdo
-  uint32_t leftLeaf = 3;
+  uint32_t leftLeaf = 2;
 
   //Numero de nodos de hoja del lado derecho
-  uint32_t rightLeaf = 3;
+  uint32_t rightLeaf = 2;
 
   //PointToPoint lado izquierdo
   PointToPointHelper pointToPointLeftLeaf;
@@ -96,6 +96,7 @@ int main (int argc, char *argv[])
 
   //Ciclo los nodos y defino cual es TCP y cual es UDP
   for(uint32_t i=0; i< dumbbell.LeftCount(); i++) {
+    /*
     if(i==1) {
       //Nodo con UDP
       AddressValue remoteAddressUDP(InetSocketAddress(dumbbell.GetRightIpv4Address(i), portUDP));
@@ -103,13 +104,15 @@ int main (int argc, char *argv[])
       clientApps.Add(onOffHelperUDP.Install(dumbbell.GetLeft (i)));
       clientApps=sinkUDP.Install(dumbbell.GetRight(i));
     } else {
-    
+    */
       //Nodo con TCP
       AddressValue remoteAddressTCP (InetSocketAddress(dumbbell.GetRightIpv4Address(i), portTCP));
       onOffHelperTCP.SetAttribute("Remote", remoteAddressTCP);
       clientApps.Add(onOffHelperTCP.Install(dumbbell.GetLeft(i)));
       clientApps=sinkTCP.Install(dumbbell.GetRight(i));
+    /*
     }
+    */
   }
 
   //Start after sink y stop before sink
@@ -120,7 +123,7 @@ int main (int argc, char *argv[])
   dumbbell.BoundingBox(1, 1, 100, 100);
 
   //Archivo XML para NetAnim
-  AnimationInterface anim("DumbbellPunto3.xml");
+  AnimationInterface anim("TCP.xml");
  
   //Configura la simulacion real
   Ipv4GlobalRoutingHelper::PopulateRoutingTables();
@@ -129,26 +132,28 @@ int main (int argc, char *argv[])
   Simulator::Stop(Seconds(100));
 
   // crear archivos para analizar con wireshark
-  pointToPointRouterCentral.EnablePcapAll("Punto3"); //filename without .pcap extention
-
-  //Stream para CWND
-  AsciiTraceHelper asciiTraceHelper;
-  Ptr<OutputStreamWrapper> stream = asciiTraceHelper.CreateFileStream("Punto3cwnd.txt");
+  pointToPointRouterCentral.EnablePcapAll("TCP"); //filename without .pcap extention
   
-  //Analisis sobre nodo 2 (Router con cuello de botella)
-  Simulator::Schedule(Seconds(0.00001), &TraceCwnd, 2, 0, MakeBoundCallback (&CwndChange,stream));
+  AsciiTraceHelper asciiTraceHelper;
+  // Para cada nodo en la topología dumbbell
+  for (uint32_t i = 0; i < dumbbell.LeftCount() + dumbbell.RightCount() + 2; i++) {
+  // Crea un nuevo stream para cada nodo
+  	Ptr<OutputStreamWrapper> stream = asciiTraceHelper.CreateFileStream("TCPcwnd_nodo" + std::to_string(i) + ".txt");
+  	// Rastrea la ventana de congestión para el nodo i
+  	Simulator::Schedule(Seconds(0.00001), &TraceCwnd, i, 0, MakeBoundCallback (&CwndChange, stream));
+  }
 
   //Necesario para ver las estadisticas como paquetes perdidos
   // Flow monitor
-  Ptr<FlowMonitor> flowMonitor;
-  FlowMonitorHelper flowHelper;
-  flowMonitor = flowHelper.InstallAll();
+  //Ptr<FlowMonitor> flowMonitor;
+  //FlowMonitorHelper flowHelper;
+  //flowMonitor = flowHelper.InstallAll();
 
   //Run simulador
   Simulator::Run();
 
   //Genero el xml para las estadisticas
-  flowMonitor->SerializeToXmlFile("FlowMonitorDumbbellPunto3.xml", true, true);
+  //flowMonitor->SerializeToXmlFile("FlowMonitorDumbbellPunto2.xml", true, true);
 
   //Destroy simulador
   Simulator::Destroy();
