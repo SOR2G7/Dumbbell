@@ -17,6 +17,8 @@ int main (int argc, char *argv[])
   //configuraciones general
   Config::SetDefault ("ns3::OnOffApplication::PacketSize", UintegerValue(50));
 
+  //https://www.nsnam.org/docs/release/3.16/doxygen/classns3_1_1_point_to_point_dumbbell_helper.html#a0ef17ad7a35cf814ba949ea91ab38279
+
   uint32_t left = 3; // nodos izquierdos
   uint32_t right = 3; // nodos derechos
 
