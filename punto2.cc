@@ -21,18 +21,18 @@ int main (int argc, char *argv[])
 
   //p2p izquierdo
   PointToPointHelper p2pLeft;
-  p2pLeft.SetDeviceAttribute("DataRate", StringValue ("200Kbps"));
-  p2pLeft.SetChannelAttribute("Delay", StringValue ("100ms"));
+  p2pLeft.SetDeviceAttribute("DataRate", StringValue ("100Kbps"));
+  p2pLeft.SetChannelAttribute("Delay", StringValue ("10ms"));
 
   //p2p derecho
   PointToPointHelper p2pRight;
-  p2pRight.SetDeviceAttribute("DataRate", StringValue ("200Kbps"));
-  p2pRight.SetChannelAttribute("Delay", StringValue ("100ms"));
+  p2pRight.SetDeviceAttribute("DataRate", StringValue ("100Kbps"));
+  p2pRight.SetChannelAttribute("Delay", StringValue ("10ms"));
 
   //p2p router
   PointToPointHelper p2pRouter;
-  p2pRouter.SetDeviceAttribute("DataRate", StringValue ("100Kbps"));
-  p2pRouter.SetChannelAttribute("Delay", StringValue ("100ms"));
+  p2pRouter.SetDeviceAttribute("DataRate", StringValue ("200Kbps"));
+  p2pRouter.SetChannelAttribute("Delay", StringValue ("10ms"));
  
   //Dumbbell topology con Helper
   PointToPointDumbbellHelper dumbbell(left, p2pLeft, right, p2pRight, p2pRouter);
@@ -52,7 +52,7 @@ int main (int argc, char *argv[])
   OnOffHelper onOffHelperUDP ("ns3::UdpSocketFactory", Address ());
   Address sinkLocalAddresssUDP(InetSocketAddress (Ipv4Address::GetAny (), portUDP));
   PacketSinkHelper sinkUDP ("ns3::UdpSocketFactory", sinkLocalAddresssUDP);
- 
+
   //Configuracion para TCP
   //creo un on/off helper para TCP
   int portTCP=1001;
@@ -66,11 +66,10 @@ int main (int argc, char *argv[])
   //Ciclo los nodos de la izquierda y defino cual es TCP y cual es UDP
   for(uint32_t i=0; i< dumbbell.LeftCount(); i++) {
     if(i==1) {
-      //Nodo con UDP
+      // Nodo con UDP (apagado)
       AddressValue remoteAddressUDP(InetSocketAddress(dumbbell.GetRightIpv4Address(i), portUDP));
       onOffHelperUDP.SetAttribute("Remote", remoteAddressUDP);
-      clientApps.Add(onOffHelperUDP.Install(dumbbell.GetLeft (i)));
-      clientApps=sinkUDP.Install(dumbbell.GetRight(i));
+      // No se inicia la aplicación UDP
     } else {
       //Nodo con TCP
       AddressValue remoteAddressTCP (InetSocketAddress(dumbbell.GetRightIpv4Address(i), portTCP));
