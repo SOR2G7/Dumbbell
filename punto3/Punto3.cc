@@ -76,7 +76,7 @@ int main (int argc, char *argv[])
 
   //Container de apps
   ApplicationContainer clientApps;
-  ApplicationContainer server;
+  ApplicationContainer serverApps;
 
 /*
   //Ciclo los nodos de la izquierda y defino cual es UDP y cual es TCP
@@ -101,21 +101,21 @@ int main (int argc, char *argv[])
     AddressValue remoteAddressUDP(InetSocketAddress(dumbbell.GetRightIpv4Address(i), portUDP));
     onOffHelperUDP.SetAttribute("Remote", remoteAddressUDP);
     clientApps.Add(onOffHelperUDP.Install(dumbbell.GetLeft (i)));
-    server.Add(sinkUDP.Install(dumbbell.GetRight(i)));
+    serverApps.Add(sinkUDP.Install(dumbbell.GetRight(i)));
   } else {
     //Nodo con TCP
     AddressValue remoteAddressTCP (InetSocketAddress(dumbbell.GetRightIpv4Address(i), portTCP));
     onOffHelperTCP.SetAttribute("Remote", remoteAddressTCP);
     clientApps.Add(onOffHelperTCP.Install(dumbbell.GetLeft(i)));
-    server.Add(sinkTCP.Install(dumbbell.GetRight(i)));
+    serverApps.Add(sinkTCP.Install(dumbbell.GetRight(i)));
   }
 }
 
   //Arrancamos
   clientApps.Start(Seconds(0.0));
   clientApps.Stop(Seconds(30.0));
-  server.Start(Seconds(0.0));
-  server.Stop(Seconds(100.0));
+  serverApps.Start(Seconds(0.0));
+  serverApps.Stop(Seconds(100.0));
 
   dumbbell.BoundingBox(1, 1, 100, 100);
   AnimationInterface anim("UDPTCP.xml"); //Para NetAnim
