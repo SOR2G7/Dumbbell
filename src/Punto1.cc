@@ -14,57 +14,43 @@ NS_LOG_COMPONENT_DEFINE ("Dumbbell");
 
 int main (int argc, char *argv[])
 {
-  //configuraciones general
+  Config::SetDefault("ns3::TcpL4Protocol::SocketType", StringValue("ns3::TcpNewReno"));
   Config::SetDefault ("ns3::OnOffApplication::PacketSize", UintegerValue(50));
-
-  //https://www.nsnam.org/docs/release/3.16/doxygen/classns3_1_1_point_to_point_dumbbell_helper.html#a0ef17ad7a35cf814ba949ea91ab38279
 
   uint32_t left = 3; // nodos izquierdos
   uint32_t right = 3; // nodos derechos
 
-  //PointToPoint izquierdo
+  //PointToPoint izquierdos, derechos y routers
   PointToPointHelper p2pLeft;
-  p2pLeft.SetDeviceAttribute("DataRate", StringValue ("200Kbps"));
+  p2pLeft.SetDeviceAttribute("DataRate", StringValue ("50Kbps"));
   p2pLeft.SetChannelAttribute("Delay", StringValue ("100ms"));
 
-  //PointToPoint derecho
   PointToPointHelper p2pRight;
-  p2pRight.SetDeviceAttribute("DataRate", StringValue ("200Kbps"));
+  p2pRight.SetDeviceAttribute("DataRate", StringValue ("50Kbps"));
   p2pRight.SetChannelAttribute("Delay", StringValue ("100ms"));
 
-  //PointToPoint router
   PointToPointHelper p2pRouter;
   p2pRouter.SetDeviceAttribute("DataRate", StringValue ("200Kbps"));
   p2pRouter.SetChannelAttribute("Delay", StringValue ("100ms"));
  
-  //Creo un dumbbell topology con la libreria Helper de ns3
-  //Doc en la fuente del informe
-  PointToPointDumbbellHelper dumbbell(
-                                leftLeaf, pointToPointLeftLeaf,
-                                rightLeaf, pointToPointRightLeaf,
-                                pointToPointRouterCentral);
+  //Creo la topología Dumbbell con DumbbellHelper
+  PointToPointDumbbellHelper dumbbell(left, p2pLeft, right, p2pRight, p2pRouter);
 
   //Instalo el stack
   InternetStackHelper stack;
   dumbbell.InstallStack(stack);
  
   //Asigno direcciones de IP a cada nodo
-  //10.1.1.0 -> nodos izquierdos
-  //10.2.1.0 -> nodos derechos
-  //10.3.1.0 -> nodos centrales
-  dumbbell.AssignIpv4Addresses (Ipv4AddressHelper ("10.1.1.0", "255.255.255.0"),
-                                Ipv4AddressHelper ("10.2.1.0", "255.255.255.0"),
-                                Ipv4AddressHelper ("10.3.1.0", "255.255.255.0"));
+  dumbbell.AssignIpv4Addresses (Ipv4AddressHelper ("10.1.1.0", "255.255.255.0"),  //10.1.1.0 nodos izquierdos
+                                Ipv4AddressHelper ("10.2.1.0", "255.255.255.0"),  //10.2.1.0 nodos derechos
+                                Ipv4AddressHelper ("10.3.1.0", "255.255.255.0")); //10.3.1.0 routers
 
-  //Instalo on/off a los nodos
-  //Configuracion para UDP
+  //Instalo los on/off a los nodos UDP y TCP
   int portUDP=1000;
   OnOffHelper onOffHelperUDP ("ns3::UdpSocketFactory", Address ());
   Address sinkLocalAddresssUDP(InetSocketAddress (Ipv4Address::GetAny (), portUDP));
   PacketSinkHelper sinkUDP ("ns3::UdpSocketFactory", sinkLocalAddresssUDP);
  
-  //Configuracion para TCP
-  //creo un on/off helper para TCP
   int portTCP=1001;
   OnOffHelper onOffHelperTCP ("ns3::TcpSocketFactory", Address ());
   Address sinkLocalAddresssTCP(InetSocketAddress (Ipv4Address::GetAny (), portTCP));
@@ -73,7 +59,7 @@ int main (int argc, char *argv[])
   //Container de apps
   ApplicationContainer clientApps;
 
-  //Ciclo los nodos de la izquierda y defino cual es TCP y cual es UDP
+  //Ciclo los nodos de la izquierda y defino cual es UDP y cual es TCP
   for(uint32_t i=0; i< dumbbell.LeftCount(); i++) {
     if(i==1) {
       //Nodo con UDP
@@ -89,24 +75,23 @@ int main (int argc, char *argv[])
       clientApps=sinkTCP.Install(dumbbell.GetRight(i));
     }
   }
- 
-  //Start after sink y stop before sink
+  //Arrancamos
   clientApps.Start(Seconds(0.0));
   clientApps.Stop(Seconds(10.0));
 
-  //Establece el cuadro delimitador para la animacion
   dumbbell.BoundingBox(1, 1, 100, 100);
+  AnimationInterface anim("Dumbbell.xml"); //Para NetAnim
 
-  //Archivo XML para NetAnim
-  AnimationInterface anim("Dumbbell.xml");
- 
-  //Configura la simulacion real
+  //Generamos sims
   Ipv4GlobalRoutingHelper::PopulateRoutingTables();
-  Simulator::Stop(Seconds(100));
-  
+  Simulator::Stop(Seconds(10));
   Simulator::Run();
 
-  //Destroy simulador
+  //.pcap para analizar con wireshark
+  p2pRouter.EnablePcapAll("Dumbbell");
+
+  //Matamos sims
   Simulator::Destroy();
+
   return 0;
 }
