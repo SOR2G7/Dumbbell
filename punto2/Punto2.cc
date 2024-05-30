@@ -5,6 +5,7 @@
 #include "ns3/netanim-module.h"
 #include "ns3/network-module.h"
 #include "ns3/point-to-point-layout-module.h"
+#include "ns3/drop-tail-queue.h"
 #include <iostream>
 
 using namespace std;
@@ -29,27 +30,27 @@ static void CwndChange (Ptr<OutputStreamWrapper> stream, uint32_t oldCwnd, uint3
 int main (int argc, char *argv[])
 {
   Config::SetDefault("ns3::TcpL4Protocol::SocketType", StringValue("ns3::TcpNewReno"));
-  Config::SetDefault ("ns3::OnOffApplication::PacketSize", UintegerValue(50));
+  //Config::SetDefault ("ns3::OnOffApplication::PacketSize", UintegerValue(50));
 
-  uint32_t left = 3; // nodos izquierdos
-  uint32_t right = 3; // nodos derechos
+  uint32_t left = 2; // nodos izquierdos
+  uint32_t right = 2; // nodos derechos
 
   //PointToPoint izquierdos, derechos y routers
   PointToPointHelper p2pLeft;
-  p2pLeft.SetDeviceAttribute("DataRate", StringValue ("100Mbps"));
+  p2pLeft.SetDeviceAttribute("DataRate", StringValue ("100Kbps"));
   p2pLeft.SetChannelAttribute("Delay", StringValue ("100ms"));
-  p2pLeft.SetQueue("ns3::DropTailQueue", "MaxSize", StringValue("5p")); //Reduzco máx de recepción
+  p2pLeft.SetQueue("ns3::DropTailQueue", "MaxSize", StringValue("10p")); //Reduzco máx de recepción
 
   PointToPointHelper p2pRight;
-  p2pRight.SetDeviceAttribute("DataRate", StringValue ("100Mbps"));
+  p2pRight.SetDeviceAttribute("DataRate", StringValue ("100Kbps"));
   p2pRight.SetChannelAttribute("Delay", StringValue ("100ms"));
-  p2pRight.SetQueue("ns3::DropTailQueue", "MaxSize", StringValue("5p")); //Reduzco máx de recepción
+  p2pRight.SetQueue("ns3::DropTailQueue", "MaxSize", StringValue("10p")); //Reduzco máx de recepción
 
   PointToPointHelper p2pRouter;
   //Reduzco el DataRate de los routers centrales para que sature el canal
   p2pRouter.SetDeviceAttribute  ("DataRate", StringValue ("100Kbps"));
   p2pRouter.SetChannelAttribute ("Delay", StringValue ("100ms"));
-  p2pRouter.SetQueue("ns3::DropTailQueue", "MaxSize", StringValue("5p"));  //Reduzco máx de recepción
+  p2pRouter.SetQueue("ns3::DropTailQueue", "MaxSize", StringValue("10p"));  //Reduzco máx de recepción
  
   //Creo la topología Dumbbell con DumbbellHelper
   PointToPointDumbbellHelper dumbbell(left, p2pLeft, right, p2pRight, p2pRouter);
@@ -76,9 +77,11 @@ int main (int argc, char *argv[])
 
   //Container de apps
   ApplicationContainer clientApps;
+  ApplicationContainer server;
 
   //Ciclo los nodos de la izquierda y defino cual es UDP y cual es TCP
   for(uint32_t i=0; i< dumbbell.LeftCount(); i++) {
+    /*
     if(i==1) {
       //Nodo con UDP
       AddressValue remoteAddressUDP(InetSocketAddress(dumbbell.GetRightIpv4Address(i), portUDP));
@@ -86,32 +89,37 @@ int main (int argc, char *argv[])
       clientApps.Add(onOffHelperUDP.Install(dumbbell.GetLeft (i)));
       clientApps=sinkUDP.Install(dumbbell.GetRight(i));
     } else {
+    */
       //Nodo con TCP
-      AddressValue remoteAddressTCP (InetSocketAddress(dumbbell.GetRightIpv4Address(i), portTCP));
-      onOffHelperTCP.SetAttribute("Remote", remoteAddressTCP);
-      clientApps.Add(onOffHelperTCP.Install(dumbbell.GetLeft(i)));
-      clientApps=sinkTCP.Install(dumbbell.GetRight(i));
+    	AddressValue remoteAddressTCP (InetSocketAddress(dumbbell.GetRightIpv4Address(i), portTCP));
+    	onOffHelperTCP.SetAttribute("Remote", remoteAddressTCP);
+    	clientApps.Add(onOffHelperTCP.Install(dumbbell.GetLeft(i)));
+    	server.Add(sinkTCP.Install(dumbbell.GetRight(i)));
+    /*
     }
+    */
   }
   //Arrancamos
   clientApps.Start(Seconds(0.0));
-  clientApps.Stop(Seconds(100.0));
+  clientApps.Stop(Seconds(30.0));
+  server.Start(Seconds(0.0));
+  server.Stop(Seconds(100.0));
 
   dumbbell.BoundingBox(1, 1, 100, 100);
-  AnimationInterface anim("UDPTCP.xml"); //Para NetAnim
+  AnimationInterface anim("TCP.xml"); //Para NetAnim
  
   //Generamos sims
   Ipv4GlobalRoutingHelper::PopulateRoutingTables();
   Simulator::Stop(Seconds(100));
 
   //.pcap para analizar con wireshark
-  p2pRouter.EnablePcapAll("UDPTCP");
-
+  p2pRouter.EnablePcapAll("TCP"); 
+  
   AsciiTraceHelper asciiTraceHelper;
   //Para cada nodo en la topología dumbbell
   for (uint32_t i = 0; i < dumbbell.LeftCount() + dumbbell.RightCount() + 2; i++) {
   //Crea un nuevo stream para cada nodo
-  	Ptr<OutputStreamWrapper> stream = asciiTraceHelper.CreateFileStream("UDPTCPcwnd_nodo" + std::to_string(i) + ".txt");
+  	Ptr<OutputStreamWrapper> stream = asciiTraceHelper.CreateFileStream("TCPcwnd_nodo" + std::to_string(i) + ".txt");
   	//Rastrea la ventana de congestión para el nodo i
   	Simulator::Schedule(Seconds(0.00001), &TraceCwnd, i, 0, MakeBoundCallback (&CwndChange, stream));
   }
