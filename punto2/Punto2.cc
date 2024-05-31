@@ -30,8 +30,7 @@ static void CwndChange (Ptr<OutputStreamWrapper> stream, uint32_t oldCwnd, uint3
 int main (int argc, char *argv[])
 {
   Config::SetDefault("ns3::TcpL4Protocol::SocketType", StringValue("ns3::TcpNewReno"));
-  //Config::SetDefault ("ns3::OnOffApplication::PacketSize", UintegerValue(50));
-
+  
   uint32_t left = 2; // nodos izquierdos
   uint32_t right = 2; // nodos derechos
 
